@@ -1,0 +1,16 @@
+# Fly.io configuration for the Telegram Tech News Bot.
+# This bot uses long polling (no inbound HTTP), so it runs as a worker
+# with no [[services]] / exposed ports.
+
+app = "telegram-tech-news-bot"   # change to a unique name when you run `fly launch`
+primary_region = "fra"           # pick a region near you (e.g. fra, iad, lhr)
+
+[build]
+
+[processes]
+  app = "python bot.py"
+
+# Keep exactly one instance running, always on.
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

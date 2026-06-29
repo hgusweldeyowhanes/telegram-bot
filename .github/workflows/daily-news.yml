@@ -1,0 +1,30 @@
+name: Daily Tech News
+
+on:
+  schedule:
+    # Runs every day at 09:00 UTC. Edit the cron to change the time.
+    # Format: minute hour day month day-of-week (all in UTC).
+    - cron: "0 9 * * *"
+  workflow_dispatch:   # lets you trigger a post manually from the Actions tab
+
+jobs:
+  post-news:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Post daily news
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          NEWS_API_KEY: ${{ secrets.NEWS_API_KEY }}
+        run: python post_news.py

@@ -1,0 +1,68 @@
+# Render Blueprint — Telegram Tech News Bot
+# https://render.com/docs/blueprint-spec
+#
+# Deploy: Dashboard → New → Blueprint → connect this repo
+# Or: create a Web Service manually (see README).
+
+services:
+  - type: web
+    name: telegram-tech-news-bot
+    runtime: python
+    plan: free
+    region: frankfurt
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot.py
+    healthCheckPath: /healthz
+    envVars:
+      - key: USE_WEBHOOK
+        value: "1"
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: DIGEST_MODE
+        value: "1"
+      - key: DEFAULT_TOPIC
+        value: tech
+      - key: ARTICLE_COUNT
+        value: "5"
+      - key: POST_HOUR
+        value: "9"
+      - key: POST_MINUTE
+        value: "0"
+      - key: DEDUPE_PATH
+        value: data/posted_urls.json
+      - key: WEBHOOK_PATH
+        value: telegram
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHANNEL_ID
+        sync: false
+      - key: NEWS_API_KEY
+        sync: false
+      - key: ADMIN_IDS
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: AI_SUMMARY
+        value: "1"
+
+  # Optional: daily one-shot post without keeping the web service awake.
+  # Uncomment if you prefer cron-only posting (no /news commands).
+  # - type: cron
+  #   name: telegram-tech-news-daily
+  #   runtime: python
+  #   schedule: "0 9 * * *"
+  #   buildCommand: pip install -r requirements.txt
+  #   startCommand: python post_news.py
+  #   envVars:
+  #     - key: TELEGRAM_BOT_TOKEN
+  #       sync: false
+  #     - key: TELEGRAM_CHANNEL_ID
+  #       sync: false
+  #     - key: NEWS_API_KEY
+  #       sync: false
+  #     - key: DIGEST_MODE
+  #       value: "1"
+  #     - key: DEFAULT_TOPIC
+  #       value: tech

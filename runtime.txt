@@ -1,0 +1,2 @@
+# Render / production runtime (optional pin)
+python-3.12.8

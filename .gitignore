@@ -1,6 +1,9 @@
 # Secrets — never commit your real credentials
 .env
 
+# Runtime state (posted URL fingerprints)
+data/
+
 # Python
 __pycache__/
 *.py[cod]
@@ -8,6 +11,7 @@ __pycache__/
 .venv/
 venv/
 env/
+.pytest_cache/
 
 # OS / editor
 .DS_Store

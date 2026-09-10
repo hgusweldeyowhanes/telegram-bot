@@ -20,6 +20,16 @@ class NewsFetcher:
         self.session = requests.Session()
         self.session.headers.update({"X-Api-Key": api_key})
 
+    def get_custom_news(
+        self,
+        query: str,
+        count: int = 5,
+        fetch_pool: int | None = None,
+    ) -> List[Dict]:
+        """Fetch articles for an arbitrary custom query string."""
+        pool = fetch_pool or max(count * 3, count)
+        return self._fetch_everything_query(query, pool)[:pool]
+
     def get_top_tech_news(
         self,
         count: int = 5,
@@ -56,6 +66,27 @@ class NewsFetcher:
             return articles[:count]
         except Exception as e:
             logger.error("Headlines fetch failed: %s", e)
+            return []
+
+    def _fetch_everything_query(self, query: str, count: int) -> List[Dict]:
+        try:
+            resp = self.session.get(
+                EVERYTHING_URL,
+                params={
+                    "q": query,
+                    "language": "en",
+                    "sortBy": "publishedAt",
+                    "pageSize": min(count, 100),
+                },
+                timeout=10,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            articles = [a for a in data.get("articles", []) if self._is_valid(a)]
+            logger.info("Fetched %s articles for custom query=%s.", len(articles), query)
+            return articles[:count]
+        except Exception as e:
+            logger.error("Custom everything fetch failed (%s): %s", query, e)
             return []
 
     def _fetch_everything(self, topic: Topic, count: int) -> List[Dict]:

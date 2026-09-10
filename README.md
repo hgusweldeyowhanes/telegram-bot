@@ -81,6 +81,7 @@ python bot.py
 | `/topics` | List topic commands |
 | `/news` | Post default topic now |
 | `/news ai` | Post a topic by name |
+| `/search <query>` | Search and post a custom query digest |
 | `/tech` `/ai` `/cyber` `/startups` `/cloud` `/gadgets` | Topic digests |
 
 ---

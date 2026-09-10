@@ -11,7 +11,13 @@ from telegram import Bot, Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 from dedupe import DedupeStore
-from formatter import format_article, format_digest_body, format_digest_header, format_footer
+from formatter import (
+    format_article,
+    format_digest_body,
+    format_digest_header,
+    format_footer,
+    format_search_results,
+)
 from news_fetcher import NewsFetcher
 from summarizer import Summarizer
 from topics import DEFAULT_TOPIC, TOPICS, get_topic, list_topics_help
@@ -91,6 +97,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "👋 Tech News Bot is running!\n\n"
         "Commands:\n"
         "/news – Post default tech briefing\n"
+        "/search <query> – Search by custom keyword phrase\n"
         "/topics – List topic digests\n"
         "/ai /cyber /startups /cloud /gadgets – Topic digests\n"
         "/status – Bot status\n"
@@ -102,9 +109,10 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🤖 *Tech News Bot Help*\n\n"
         "Posts curated tech briefings to your channel. Supports topic filters, "
-        "duplicate skipping, and optional AI one-line summaries.\n\n"
+        "duplicate skipping, custom keyword searches, and optional AI one-line summaries.\n\n"
         "*Commands:*\n"
         "/news – Post the default topic now\n"
+        "/search <query> – Search and post stories for a custom phrase\n"
         "/topics – Show all topics\n"
         f"{list_topics_help()}\n"
         "/status – Scheduler + dedupe status\n\n"
@@ -144,6 +152,22 @@ async def topics_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if await _deny_if_not_admin(update):
+        return
+    if not context.args:
+        await update.message.reply_text("Usage: /search <keyword or phrase>\nExample: /search AI safety")
+        return
+
+    query = " ".join(context.args)
+    await update.message.reply_text(f"⏳ Searching for *{query}*...", parse_mode="Markdown")
+    posted = await send_custom_news(context, query)
+    if posted:
+        await update.message.reply_text(f"✅ Posted {posted} new stor{'y' if posted == 1 else 'ies'} for your search.")
+    else:
+        await update.message.reply_text("ℹ️ Nothing new to post for that search query.")
+
+
 async def post_news_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if await _deny_if_not_admin(update):
         return
@@ -175,6 +199,44 @@ def _make_topic_handler(topic_key: str):
 
 async def send_daily_news(context: ContextTypes.DEFAULT_TYPE):
     await send_news(context, topic_key=DEFAULT_POST_TOPIC)
+
+
+async def send_custom_news(context: ContextTypes.DEFAULT_TYPE, query: str, count: int = ARTICLE_COUNT) -> int:
+    bot: Bot = context.bot
+    raw = fetcher.get_custom_news(query, count=count, fetch_pool=count * 4)
+    fresh = dedupe.filter_new(raw)[:count]
+
+    if not fresh:
+        logger.warning("No new articles for custom query=%s.", query)
+        return 0
+
+    articles = summarizer.enrich(fresh)
+    body = format_search_results(articles, query)
+    if len(body) <= 4000:
+        await bot.send_message(
+            chat_id=CHANNEL_ID,
+            text=body,
+            parse_mode="Markdown",
+            disable_web_page_preview=True,
+        )
+    else:
+        await bot.send_message(
+            chat_id=CHANNEL_ID,
+            text=f"🔍 *Custom search: {query}*\n_{len(articles)} stories found_",
+            parse_mode="Markdown",
+        )
+        for i, article in enumerate(articles, 1):
+            await bot.send_message(
+                chat_id=CHANNEL_ID,
+                text=format_article(i, article),
+                parse_mode="Markdown",
+                disable_web_page_preview=False,
+            )
+            await asyncio.sleep(1.2)
+
+    dedupe.mark_many(articles)
+    logger.info("Posted %s articles for custom query=%s.", len(articles), query)
+    return len(articles)
 
 
 async def send_news(context: ContextTypes.DEFAULT_TYPE, topic_key: str = DEFAULT_TOPIC) -> int:
@@ -241,6 +303,7 @@ def _build_app() -> Application:
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("status", status))
     app.add_handler(CommandHandler("topics", topics_command))
+    app.add_handler(CommandHandler("search", search_command))
     app.add_handler(CommandHandler("news", post_news_command))
     for key in TOPICS:
         app.add_handler(CommandHandler(key, _make_topic_handler(key)))

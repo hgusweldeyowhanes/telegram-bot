@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from dedupe import DedupeStore
-from formatter import format_digest_body, format_digest_header
+from formatter import format_digest_body, format_digest_header, format_search_results
 from summarizer import Summarizer, clean_description
 from topics import TOPICS, get_topic, list_topics_help
 
@@ -74,6 +74,20 @@ class SummarizerTests(unittest.TestCase):
 
 
 class FormatterTests(unittest.TestCase):
+    def test_search_results_format_contains_titles_and_sources(self):
+        articles = [
+            {
+                "title": "AI startup raises fresh funding",
+                "description": "A major model company announced new funding.",
+                "url": "https://example.com/ai-startup",
+                "source": {"name": "TechWire"},
+            }
+        ]
+        out = format_search_results(articles, query="ai startup")
+        self.assertIn("AI startup raises fresh funding", out)
+        self.assertIn("TechWire", out)
+        self.assertIn("ai startup", out.lower())
+
     def test_digest_contains_titles(self):
         topic = get_topic("ai")
         articles = [

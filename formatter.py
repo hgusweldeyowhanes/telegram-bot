@@ -50,6 +50,26 @@ def format_digest_body(articles: list[dict], topic: Topic) -> str:
     return "\n".join(lines)
 
 
+def format_search_results(articles: list[dict], query: str) -> str:
+    """Create a Telegram-friendly search briefing for a custom query."""
+    lines = [
+        f"🔍 *Custom search: {query}*",
+        f"_{len(articles)} {'story' if len(articles) == 1 else 'stories'} found_",
+        "─" * 28,
+    ]
+    for i, article in enumerate(articles, 1):
+        title = article.get("title", "No title")
+        summary = article.get("summary") or article.get("description") or "No summary available."
+        url = article.get("url", "")
+        source = article.get("source", {}).get("name", "Unknown")
+        if len(summary) > 160:
+            summary = summary[:157] + "..."
+        lines.append(f"*{i}. {title}*\n{summary}\n[{source} →]({url})\n")
+    lines.append("─" * 28)
+    lines.append("🔔 Try /topics or /news for broader daily digests.")
+    return "\n".join(lines)
+
+
 def format_footer(topic: Topic | None = None) -> str:
     label = topic.title if topic else "tech"
     return f"{'─' * 28}\n🔔 Follow for daily {label.lower()} updates · /topics"
